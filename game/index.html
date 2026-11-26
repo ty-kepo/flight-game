@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Ring Run — a flight game</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a141c; font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hidden { display: none !important; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* --- HUD: lit instrument panels, amber on dark glass. --- */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #ffd98a; z-index: 5; }
+  .panel { position: absolute; background: rgba(8, 20, 30, 0.72); border: 1px solid rgba(255, 217, 138, 0.45); border-radius: 8px; padding: 10px 14px; box-shadow: 0 0 18px rgba(0, 0, 0, 0.45), inset 0 0 24px rgba(255, 217, 138, 0.06); }
+  .panel .label { font-size: 11px; letter-spacing: 2px; color: #9fc3d8; }
+  .panel .value { font-size: 30px; font-weight: 700; line-height: 1.05; color: #ffe9b0; text-shadow: 0 0 8px rgba(255, 200, 90, 0.55); }
+  .panel .unit { font-size: 12px; color: #9fc3d8; }
+  #hud-left { top: 14px; left: 14px; display: flex; gap: 18px; align-items: center; }
+  #hud-right { top: 14px; right: 14px; text-align: right; min-width: 210px; }
+  #hud-right .row { display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; }
+  .bar { height: 10px; background: rgba(255, 255, 255, 0.12); border-radius: 5px; overflow: hidden; margin-top: 3px; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, #ffb020, #ffd98a); }
+  #hud-fuel-fill { background: linear-gradient(90deg, #37c978, #7be3a8); }
+  #hud-fuel-fill.low { background: linear-gradient(90deg, #e0483e, #ff8a7a); }
+  #hud-message { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: 700; color: #ffe9b0; text-shadow: 0 2px 8px rgba(0,0,0,0.8); text-align: center; }
+  #hud-stall { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: 700; color: #ff6a5e; text-shadow: 0 0 10px rgba(255, 60, 40, 0.8); opacity: 0; }
+  #hud-stall.show { opacity: 1; }
+  #hud-hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(255, 233, 176, 0.75); text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+
+  /* The attitude ball: a round window on the sky and the ground. */
+  #hud-horizon { width: 74px; height: 74px; border-radius: 50%; border: 2px solid rgba(255, 217, 138, 0.6); overflow: hidden; position: relative; flex: none; background: #2a4a5e; }
+  #hud-horizon-inner { position: absolute; left: -25%; top: -25%; width: 150%; height: 150%; background: linear-gradient(180deg, #6db3e8 0 50%, #7a5a34 50% 100%); }
+  #hud-horizon::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 2px; margin: -1px 0 0 -22px; background: #ffe9b0; box-shadow: 0 0 6px rgba(255, 220, 130, 0.9); }
+
+  /* --- Cockpit dashboard frame, shown only in cockpit view. --- */
+  #cockpit-frame { position: fixed; left: 0; right: 0; bottom: 0; height: 132px; z-index: 4; pointer-events: none;
+    background: linear-gradient(180deg, rgba(16, 24, 30, 0) 0%, rgba(16, 24, 30, 0.92) 45%, #10181e 100%); }
+  #cockpit-frame .gauges { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 26px; }
+  #cockpit-frame .gauge { width: 74px; height: 74px; border-radius: 50%; border: 3px solid #3a4a55; background: radial-gradient(circle at 50% 38%, #1c2f3d, #0a141c 72%); box-shadow: inset 0 0 14px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5); position: relative; }
+  #cockpit-frame .gauge::before { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 26px; background: #ffb020; transform-origin: 50% 100%; transform: translate(-50%, -100%) rotate(38deg); box-shadow: 0 0 6px rgba(255, 176, 32, 0.9); }
+  #cockpit-frame .gauge::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #c8d6de; }
+
+  /* --- The big centred screens: title, pause, crashed, landed. --- */
+  #overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(4, 12, 18, 0.45); pointer-events: none; }
+  #overlay-card { max-width: 680px; margin: 0 20px; background: rgba(8, 20, 30, 0.88); border: 1px solid rgba(255, 217, 138, 0.55); border-radius: 12px; padding: 28px 34px; text-align: center; color: #e8f0f4; box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); }
+  #overlay-title { margin: 0 0 10px; font-size: 44px; letter-spacing: 4px; color: #ffd98a; text-shadow: 0 0 16px rgba(255, 200, 90, 0.5); }
+  #overlay-body { font-size: 16px; line-height: 1.55; }
+  #overlay-body p { margin: 8px 0; }
+  #overlay-hint { margin-top: 16px; font-size: 14px; color: #9fc3d8; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Island Ring Run: fly six rings around the island, then land on the runway"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div id="cockpit-frame" class="hidden">
+  <div class="gauges"><div class="gauge"></div><div class="gauge"></div><div class="gauge"></div></div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="hud-left" class="panel">
+    <div id="hud-horizon"><div id="hud-horizon-inner"></div></div>
+    <div>
+      <div class="label">AIRSPEED</div>
+      <div><span class="value" id="hud-speed">0</span> <span class="unit">KT</span></div>
+    </div>
+    <div>
+      <div class="label">ALTITUDE</div>
+      <div><span class="value" id="hud-altitude">0</span> <span class="unit">FT</span></div>
+    </div>
+    <div>
+      <div class="label">HEADING</div>
+      <div><span class="value" id="hud-heading">090°</span> <span class="unit" id="hud-compass">E</span></div>
+    </div>
+  </div>
+  <div id="hud-right" class="panel">
+    <div class="row"><span class="label">THROTTLE</span><span id="hud-throttle-text">0%</span></div>
+    <div class="bar"><div id="hud-throttle-fill" style="width: 0%"></div></div>
+    <div class="row"><span class="label">FUEL</span><span id="hud-fuel-text">100%</span></div>
+    <div class="bar"><div id="hud-fuel-fill" style="width: 100%"></div></div>
+    <div class="row"><span class="label">SCORE</span><span class="value" id="hud-score" style="font-size: 20px;">0</span></div>
+    <div class="row"><span class="label">RINGS</span><span id="hud-rings">0 / 6</span></div>
+    <div class="row"><span class="label">TIME</span><span id="hud-time">0:00</span></div>
+  </div>
+  <div id="hud-message"></div>
+  <div id="hud-stall">STALL — NOSE DOWN, THROTTLE UP</div>
+  <div id="hud-hint">W/S pitch · A/D bank · Shift/X throttle · Q/E rudder · Space brake · C camera · P pause</div>
+</div>
+
+<div id="overlay" class="hidden">
+  <div id="overlay-card">
+    <h1 id="overlay-title"></h1>
+    <div id="overlay-body"></div>
+    <div id="overlay-hint"></div>
+  </div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
