@@ -1,8 +1,8 @@
 # Island Ring Run
 
-[![make.fun](https://make.fun/badge/competition/best-flight-game-20261126-0057)](https://make.fun/bounty/best-flight-game-20261126-0057)
-[![make.fun](https://make.fun/badge/entries/best-flight-game-20261126-0057)](https://make.fun/bounty/best-flight-game-20261126-0057)
-[![make.fun](https://make.fun/badge/rank/best-flight-game-20261126-0057)](https://make.fun/bounty/best-flight-game-20261126-0057)
+[![make.fun · best-flight-game-20261126-0057](https://make.fun/badge/best-flight-game-20261126-0057.svg)](https://make.fun/bounty/best-flight-game-20261126-0057?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
+[![rank](https://make.fun/badge/best-flight-game-20261126-0057/ty-kepo/flight-game/rank.svg)](https://make.fun/bounty/best-flight-game-20261126-0057/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
+[![reward](https://make.fun/badge/best-flight-game-20261126-0057/ty-kepo/flight-game/reward.svg)](https://make.fun/bounty/best-flight-game-20261126-0057?utm_source=github&utm_medium=readme&utm_campaign=best-flight-game-20261126-0057)
 
 A complete 3D flight game for the make.fun bounty [Make the best flight game](https://make.fun/bounty/best-flight-game-20261126-0057).
 
